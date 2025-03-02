@@ -1,11 +1,12 @@
-// components/SearchResults.jsx
+'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 
 const SearchResults = () => {
-    const router = useRouter();
-    const { q, id } = router.query;
+    const searchParams = useSearchParams();
+    const q = searchParams.get('q');
+    const id = searchParams.get('id');
 
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(true);

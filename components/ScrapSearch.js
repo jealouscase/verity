@@ -1,4 +1,3 @@
-// components/ScrapSearch.jsx
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -30,8 +29,8 @@ const ScrapSearch = () => {
             }
 
             const data = await response.json();
-
-            // Update: Use searchParams syntax for App Router
+            
+            // Use the push method with the correct query parameter syntax for App Router
             router.push(`/search?q=${encodeURIComponent(prompt)}&id=${encodeURIComponent(data.searchId)}`);
 
         } catch (err) {
