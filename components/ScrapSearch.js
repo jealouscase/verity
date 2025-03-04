@@ -16,34 +16,20 @@ const ScrapSearch = () => {
         setError(null);
 
         try {
-            const response = await fetch('/api/search', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ prompt }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Search request failed');
-            }
-
-            const data = await response.json();
+            // Simply navigate to the search page with the query parameter
+            // The search will be performed there
+            router.push(`/search?q=${encodeURIComponent(prompt.trim())}`);
             
-            // Use the push method with the correct query parameter syntax for App Router
-            router.push(`/search?q=${encodeURIComponent(prompt)}&id=${encodeURIComponent(data.searchId)}`);
-
         } catch (err) {
             console.error('Search error:', err);
-            setError('Failed to perform search. Please try again.');
-        } finally {
+            setError('Failed to navigate to search results. Please try again.');
             setIsLoading(false);
         }
     };
 
     return (
         <div className="max-w-2xl mx-auto p-4">
-            <h1 className="text-2xl font-bold mb-4">Verity Search v1</h1>
+            <h1 className="text-2xl font-bold mb-4">Verity Search</h1>
 
             <form onSubmit={handleSubmit} className="flex flex-col space-y-3">
                 <div className="flex flex-col">

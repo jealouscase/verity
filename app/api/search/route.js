@@ -1,160 +1,93 @@
 // app/api/search/route.js
-import { v4 as uuidv4 } from 'uuid';
 import { generateCypherQuery, validateQuery } from '../../../services/openaiService';
-import { executePromptQuery } from '../../../services/neo4jsService';
-
-// Create a static object to store search results
-const searchResults = {};
-
-// Function to help with detailed error reporting
-const logErrorDetails = (error, context) => {
-    console.error(`Error in ${context}:`, error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-
-    // For API errors that might have a response
-    if (error.response) {
-        console.error('API Response:', error.response.data);
-    }
-
-    return `${context}: ${error.message}`;
-};
+import { executeQuery } from '../../../services/neo4jsService';
 
 export async function POST(request) {
-    try {
-        console.log('Received POST request to /api/search');
-
-        // Parse request body
-        let body;
-        try {
-            body = await request.json();
-            console.log('Request body:', body);
-        } catch (e) {
-            const errorMsg = logErrorDetails(e, 'Request parsing');
-            return new Response(
-                JSON.stringify({ error: errorMsg }),
-                { status: 400, headers: { 'Content-Type': 'application/json' } }
-            );
-        }
-
-        const { prompt } = body;
-
-        if (!prompt) {
-            console.log('Missing prompt in request');
-            return new Response(
-                JSON.stringify({ error: 'Prompt is required' }),
-                { status: 400, headers: { 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // Generate a Cypher query from the natural language prompt
-        let queryInfo;
-        try {
-            console.log('Generating Cypher query for prompt:', prompt);
-            queryInfo = await generateCypherQuery(prompt);
-            console.log('Generated query info:', JSON.stringify(queryInfo, null, 2));
-            if (!queryInfo || !queryInfo.query) {
-                throw new Error('Generated query is empty or invalid');
-            }
-            console.log('Generated query:', queryInfo.query);
-        } catch (error) {
-            const errorMsg = logErrorDetails(error, 'Query generation');
-            console.error('Full error details:', {
-                error: error,
-                queryInfo: queryInfo,
-                prompt: prompt
-            });
-            return new Response(
-                JSON.stringify({ error: errorMsg }),
-                { status: 500, headers: { 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // Validate the query for safety
-        try {
-            console.log('Validating query');
-            await validateQuery(queryInfo.query);
-            console.log('Query validation successful');
-        } catch (error) {
-            const errorMsg = logErrorDetails(error, 'Query validation');
-            return new Response(
-                JSON.stringify({ error: errorMsg }),
-                { status: 400, headers: { 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // Execute the query against Neo4j
-        let results;
-        try {
-            console.log('Executing query against Neo4j');
-            results = await executePromptQuery(queryInfo.query);
-            console.log('Query executed successfully, results count:', results.length);
-        } catch (error) {
-            const errorMsg = logErrorDetails(error, 'Query execution');
-            return new Response(
-                JSON.stringify({ error: errorMsg }),
-                { status: 500, headers: { 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // Process results
-        let processedResults;
-        try {
-            console.log('Processing results');
-            processedResults = results.map(record => {
-                // Check all properties to find the scrap object
-                const scrap = Object.values(record).find(
-                    value => value && value.labels && value.labels.includes('Scrap')
-                );
-
-                if (!scrap) return null;
-
-                return {
-                    ...scrap,
-                    relationships: []
-                };
-            }).filter(Boolean);
-
-            console.log('Processed results count:', processedResults.length);
-        } catch (error) {
-            const errorMsg = logErrorDetails(error, 'Results processing');
-            return new Response(
-                JSON.stringify({ error: errorMsg }),
-                { status: 500, headers: { 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // Store results
-        try {
-            const searchId = uuidv4();
-            searchResults[searchId] = {
-                results: processedResults,
-                queryInfo,
-                timestamp: Date.now()
-            };
-
-            console.log('Results stored with ID:', searchId);
-            console.log('Available search IDs:', Object.keys(searchResults));
-
-            return new Response(
-                JSON.stringify({ searchId }),
-                { status: 200, headers: { 'Content-Type': 'application/json' } }
-            );
-        } catch (error) {
-            const errorMsg = logErrorDetails(error, 'Results storage');
-            return new Response(
-                JSON.stringify({ error: errorMsg }),
-                { status: 500, headers: { 'Content-Type': 'application/json' } }
-            );
-        }
-    } catch (error) {
-        const errorMsg = logErrorDetails(error, 'Unexpected error');
-        return new Response(
-            JSON.stringify({ error: errorMsg }),
-            { status: 500, headers: { 'Content-Type': 'application/json' } }
-        );
+  console.log('🔍 Search API: Received search request');
+  
+  try {
+    // Parse request body
+    const body = await request.json();
+    console.log('📝 Request prompt:', body.prompt);
+    
+    if (!body.prompt) {
+      console.log('❌ No prompt provided');
+      return new Response(
+        JSON.stringify({ error: 'Prompt is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
-}
 
-// Export the searchResults object so it can be imported by the results route
-export { searchResults };
+    // Step 1: Generate Cypher query from natural language prompt
+    console.log('🧠 Generating Cypher query');
+    const queryInfo = await generateCypherQuery(body.prompt);
+    
+    if (!queryInfo || !queryInfo.query) {
+      console.log('❌ Failed to generate a valid query');
+      return new Response(
+        JSON.stringify({ error: 'Failed to generate a valid query' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('✅ Generated query:', queryInfo.query);
+
+    // Step 2: Validate the query for safety
+    console.log('🛡️ Validating query for safety');
+    try {
+      await validateQuery(queryInfo.query);
+      console.log('✅ Query validation passed');
+    } catch (error) {
+      console.error('❌ Query validation failed:', error.message);
+      return new Response(
+        JSON.stringify({ error: `Invalid query: ${error.message}` }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 3: Execute the query against Neo4j
+    console.log('🔄 Executing query against Neo4j');
+    const results = await executeQuery(queryInfo.query);
+    console.log(`✅ Query executed, received ${results.length} results`);
+
+    // Step 4: Process results to extract Scrap objects
+    console.log('🔄 Processing results');
+    const processedResults = results.map(record => {
+      // Find the scrap object in the record
+      const scrap = Object.values(record).find(
+        value => value && value.labels && value.labels.includes('Scrap')
+      );
+      
+      if (!scrap) return null;
+      
+      return {
+        id: scrap.id,
+        content: scrap.content,
+        tags: scrap.tags || [],
+        metadata: scrap.metadata || {},
+        // Any other properties you need
+      };
+    }).filter(Boolean); // Remove any null results
+    
+    console.log(`✅ Processed ${processedResults.length} valid results`);
+
+    // Return results directly
+    return new Response(
+      JSON.stringify({ 
+        results: processedResults,
+        queryInfo: {
+          query: queryInfo.query,
+          explanation: queryInfo.explanation || ''
+        }
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+    
+  } catch (error) {
+    console.error('💥 Unexpected error in search API:', error);
+    return new Response(
+      JSON.stringify({ error: `Search error: ${error.message}` }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
