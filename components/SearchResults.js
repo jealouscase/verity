@@ -10,6 +10,7 @@ const SearchResults = () => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [errorDetails, setErrorDetails] = useState(null);
   const [queryInfo, setQueryInfo] = useState(null);
 
   useEffect(() => {
@@ -30,9 +31,15 @@ const SearchResults = () => {
           },
           body: JSON.stringify({ prompt: q }),
         });
-        
+                
         if (!response.ok) {
-          throw new Error('Search request failed');
+          const data = await response.json();
+          throw new Error(data.error || 'Search request failed', { 
+            cause: { 
+              details: data.details,
+              technicalDetails: data.technicalDetails 
+            }
+          });
         }
         
         const data = await response.json();
@@ -43,7 +50,8 @@ const SearchResults = () => {
         
       } catch (err) {
         console.error('Error in search:', err);
-        setError('Failed to perform search. Please try again.');
+        setError(err.message || 'Failed to perform search. Please try again.');
+        setErrorDetails(err.cause?.details || err.cause?.technicalDetails || null);
       } finally {
         setLoading(false);
       }
@@ -59,7 +67,7 @@ const SearchResults = () => {
       <div className="max-w-4xl mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Searching...</h1>
-          <Link href="/" className="text-blue-600 hover:underline">
+          <Link href="/v1" className="text-blue-600 hover:underline">
             New Search
           </Link>
         </div>
@@ -75,12 +83,15 @@ const SearchResults = () => {
       <div className="max-w-4xl mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Search Error</h1>
-          <Link href="/" className="text-blue-600 hover:underline">
+          <Link href="/v1" className="text-blue-600 hover:underline">
             Try Again
           </Link>
         </div>
-        <div className="bg-red-100 p-4 rounded-md text-red-700">
-          {error}
+        <div className="bg-red-50 p-4 rounded-md">
+          <h3 className="text-red-800 font-semibold mb-2">{error}</h3>
+          {errorDetails && (
+            <p className="text-red-700 text-sm mt-2">{errorDetails}</p>
+          )}
         </div>
       </div>
     );
@@ -91,7 +102,7 @@ const SearchResults = () => {
       <div className="max-w-4xl mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">No Search Query</h1>
-          <Link href="/" className="text-blue-600 hover:underline">
+          <Link href="/v1" className="text-blue-600 hover:underline">
             Start a Search
           </Link>
         </div>
@@ -106,7 +117,7 @@ const SearchResults = () => {
     <div className="max-w-4xl mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Search Results</h1>
-        <Link href="/" className="text-blue-600 hover:underline">
+        <Link href="/v1" className="text-blue-600 hover:underline">
           New Search
         </Link>
       </div>

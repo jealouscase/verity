@@ -25,7 +25,10 @@ export async function POST(request) {
     if (!queryInfo || !queryInfo.query) {
       console.log('❌ Failed to generate a valid query');
       return new Response(
-        JSON.stringify({ error: 'Failed to generate a valid query' }),
+        JSON.stringify({ 
+          error: 'Failed to generate search query',
+          details: 'The AI was unable to understand or process your search request. Please try rephrasing your query.'
+        }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -40,7 +43,10 @@ export async function POST(request) {
     } catch (error) {
       console.error('❌ Query validation failed:', error.message);
       return new Response(
-        JSON.stringify({ error: `Invalid query: ${error.message}` }),
+        JSON.stringify({ 
+          error: 'Invalid search query',
+          details: `The generated query was invalid: ${error.message}. Please try a different search phrase.`
+        }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -86,7 +92,11 @@ export async function POST(request) {
   } catch (error) {
     console.error('💥 Unexpected error in search API:', error);
     return new Response(
-      JSON.stringify({ error: `Search error: ${error.message}` }),
+      JSON.stringify({ 
+        error: 'Search system error',
+        details: 'An unexpected error occurred while processing your search. Please try again later.',
+        technicalDetails: error.message 
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
