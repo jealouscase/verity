@@ -1,66 +1,42 @@
 // app/api/search/route.js
 import { v4 as uuidv4 } from 'uuid';
-import searchCache from '../../../services/cacheService';
+import { generateCypherQuery, validateQuery } from '../../../services/openaiService';
+import { executePromptQuery } from '../../../services/neo4jsService';
 
-// Create a simple mock implementation for testing
-// Remove this once the actual services are working
-const mockGenerateCypherQuery = async (prompt) => {
-  console.log('Mock generating Cypher query for:', prompt);
-  return {
-    query: `MATCH (s:Scrap) 
-            WHERE s.content CONTAINS "${prompt}" 
-            RETURN s LIMIT 10`,
-    explanation: "This is a mock query explanation."
-  };
-};
+// Create a static object to store search results
+const searchResults = {};
 
-const mockValidateQuery = async (query) => {
-  console.log('Mock validating query:', query);
-  return true;
-};
+// Function to help with detailed error reporting
+const logErrorDetails = (error, context) => {
+    console.error(`Error in ${context}:`, error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
 
-const mockExecutePromptQuery = async (query) => {
-  console.log('Mock executing query:', query);
-  // Return mock results
-  return [
-    {
-      s: {
-        id: "scrap1",
-        content: "The waves broke and spread their waters swiftly over the shore.",
-        tags: ["nature", "imagery", "water"],
-        labels: ["Scrap"],
-        metadata: { tone: "descriptive", setting: "beach" }
-      }
-    },
-    {
-      s: {
-        id: "scrap2",
-        content: "Cooking is balance. Salt brightens. Fat enriches. Acid sharpens. Heat transforms",
-        tags: ["cooking", "balance", "transformation"],
-        labels: ["Scrap"],
-        metadata: { tone: "instructive" }
-      }
+    // For API errors that might have a response
+    if (error.response) {
+        console.error('API Response:', error.response.data);
     }
-  ];
+
+    return `${context}: ${error.message}`;
 };
 
 export async function POST(request) {
     try {
         console.log('Received POST request to /api/search');
-        
+
         // Parse request body
         let body;
         try {
             body = await request.json();
             console.log('Request body:', body);
         } catch (e) {
-            console.error('Error parsing request body:', e);
+            const errorMsg = logErrorDetails(e, 'Request parsing');
             return new Response(
-                JSON.stringify({ error: 'Invalid request body' }),
+                JSON.stringify({ error: errorMsg }),
                 { status: 400, headers: { 'Content-Type': 'application/json' } }
             );
         }
-        
+
         const { prompt } = body;
 
         if (!prompt) {
@@ -71,23 +47,61 @@ export async function POST(request) {
             );
         }
 
-        // For debugging/testing, use mock implementations 
-        // Replace with actual implementations when ready
+        // Generate a Cypher query from the natural language prompt
+        let queryInfo;
         try {
-            // Generate a Cypher query from the natural language prompt
-            const queryInfo = await mockGenerateCypherQuery(prompt);
-            console.log('Generated query info:', queryInfo);
+            console.log('Generating Cypher query for prompt:', prompt);
+            queryInfo = await generateCypherQuery(prompt);
+            console.log('Generated query info:', JSON.stringify(queryInfo, null, 2));
+            if (!queryInfo || !queryInfo.query) {
+                throw new Error('Generated query is empty or invalid');
+            }
+            console.log('Generated query:', queryInfo.query);
+        } catch (error) {
+            const errorMsg = logErrorDetails(error, 'Query generation');
+            console.error('Full error details:', {
+                error: error,
+                queryInfo: queryInfo,
+                prompt: prompt
+            });
+            return new Response(
+                JSON.stringify({ error: errorMsg }),
+                { status: 500, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
 
-            // Validate the query for safety
-            await mockValidateQuery(queryInfo.query);
-            console.log('Query validated successfully');
+        // Validate the query for safety
+        try {
+            console.log('Validating query');
+            await validateQuery(queryInfo.query);
+            console.log('Query validation successful');
+        } catch (error) {
+            const errorMsg = logErrorDetails(error, 'Query validation');
+            return new Response(
+                JSON.stringify({ error: errorMsg }),
+                { status: 400, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
 
-            // Execute the query against Neo4j
-            const results = await mockExecutePromptQuery(queryInfo.query);
-            console.log('Query execution results:', results);
+        // Execute the query against Neo4j
+        let results;
+        try {
+            console.log('Executing query against Neo4j');
+            results = await executePromptQuery(queryInfo.query);
+            console.log('Query executed successfully, results count:', results.length);
+        } catch (error) {
+            const errorMsg = logErrorDetails(error, 'Query execution');
+            return new Response(
+                JSON.stringify({ error: errorMsg }),
+                { status: 500, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
 
-            // Process results to normalize data structure
-            const processedResults = results.map(record => {
+        // Process results
+        let processedResults;
+        try {
+            console.log('Processing results');
+            processedResults = results.map(record => {
                 // Check all properties to find the scrap object
                 const scrap = Object.values(record).find(
                     value => value && value.labels && value.labels.includes('Scrap')
@@ -95,43 +109,52 @@ export async function POST(request) {
 
                 if (!scrap) return null;
 
-                // For the mock implementation, we don't have relationships
                 return {
                     ...scrap,
                     relationships: []
                 };
             }).filter(Boolean);
 
-            console.log('Processed results:', processedResults);
+            console.log('Processed results count:', processedResults.length);
+        } catch (error) {
+            const errorMsg = logErrorDetails(error, 'Results processing');
+            return new Response(
+                JSON.stringify({ error: errorMsg }),
+                { status: 500, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
 
-            // Store results in cache with a unique ID
+        // Store results
+        try {
             const searchId = uuidv4();
-            searchCache.set(searchId, {
+            searchResults[searchId] = {
                 results: processedResults,
                 queryInfo,
                 timestamp: Date.now()
-            });
-            console.log('Results stored in cache with ID:', searchId);
+            };
 
-            // Clean up old cache entries
-            searchCache.cleanOldEntries();
+            console.log('Results stored with ID:', searchId);
+            console.log('Available search IDs:', Object.keys(searchResults));
 
             return new Response(
                 JSON.stringify({ searchId }),
                 { status: 200, headers: { 'Content-Type': 'application/json' } }
             );
         } catch (error) {
-            console.error('Error during search processing:', error);
+            const errorMsg = logErrorDetails(error, 'Results storage');
             return new Response(
-                JSON.stringify({ error: `Search processing error: ${error.message}` }),
+                JSON.stringify({ error: errorMsg }),
                 { status: 500, headers: { 'Content-Type': 'application/json' } }
             );
         }
     } catch (error) {
-        console.error('Unexpected error in search API:', error);
+        const errorMsg = logErrorDetails(error, 'Unexpected error');
         return new Response(
-            JSON.stringify({ error: `Unexpected error: ${error.message}` }),
+            JSON.stringify({ error: errorMsg }),
             { status: 500, headers: { 'Content-Type': 'application/json' } }
         );
     }
 }
+
+// Export the searchResults object so it can be imported by the results route
+export { searchResults };
