@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { useState, useEffect } from 'react';
 import { Sun, Moon } from 'lucide-react';
+import Link from "next/link";
 
 const ThemeToggle = () => {
     const [isDarkMode, setIsDarkMode] = useState(false);
@@ -62,6 +63,7 @@ const Header = () => {
                 <div className="flex gap-8">
                     <p className="text-xl">Verity</p>
                     <p className="text-xl font-semibold">Archive</p>
+                    <Link className="text-xl" href={'/v1'}>v1</Link>
                 </div>
                 <input
                     type="text"
