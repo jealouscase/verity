@@ -1,11 +1,14 @@
 // pages/search.js
 import SearchResults from '../../components/SearchResults';
+import { Suspense } from 'react';
 
 export default function Search() {
     return (
         <div className="min-h-screen bg-gray-50">
             <main className="container mx-auto py-10">
-                <SearchResults />
+                <Suspense fallback={<div>Loading...</div>}>
+                    <SearchResults />
+                </Suspense>
             </main>
 
             <footer className="py-6 bg-white border-t">
