@@ -1,61 +1,121 @@
 "use client"
 import ScrapModal from '@/components/ScrapModal';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
-    const sampleEntries = {
-        "texts": [
-            "The causes of mortality in the army in the East: preventable diseases outrank all other causes",
-            "Good morning! I trust your coffee has been strong and your emails short",
-            "She's (cough) just a friend",
-            "I'm in love but I'm feeling low For I am just a footprint in the snow I'm in love with us by now But that's a feeling I can never show For a reality between lucky me I'm searching for planes in the sea and that's it Soil just needs water to be and a seed So if we turn into a tree can I be the leaves?",
-            "My sales manager would hate this email and that's why it's perfect",
-            "The waves broke and spread their waters swiftly over the shore. One after another, they massed themselves and fell; the spray tossed itself back with the energy of their fall.",
-            "The waves broke and spread their waters swiftly over the shore. One after another, they massed themselves and fell; the spray tossed itself back with the energy of their fall.",
-            "The world will little note, nor long remember what we say here, but it can never forget what they did here.",
-            "The causes of mortality in the army in the East: preventable diseases outrank all other causes",
-            "Each petal of the rose chart blossoms with death, showing where sanitation failed* (*Statistical data given the emotional power of a flower.",
-            "We are like people living in a cave, watching shadows on the wall, mistaking them for reality* (*Reality reimagined as an illusion of flickering shadows.",
-            "One is not born, but rather becomes, a woman.",
-            "One is not born, but rather becomes, a woman.",
-            "I hear the approaching thunder that, one day, will destroy us too.",
-            "Here's to the crazy ones. The misfits. The rebels. The troublemakers. They push the human race forward",
-            "Gold-threaded gowns gleam in defiance of laws, their wearers cloaked in rebellion.",
-            "One is not born, but rather becomes, a woman.",
-            "Cooking is balance. Salt brightens. Fat enriches. Acid sharpens. Heat transforms",
-            "Cooking is balance. Salt brightens. Fat enriches. Acid sharpens. Heat transforms",
-            "Cooking is balance. Salt brightens. Fat enriches. Acid sharpens. Heat transforms",
-            "Cooking is balance. Salt brightens. Fat enriches. Acid sharpens. Heat transforms",
-            "Cooking is balance. Salt brightens. Fat enriches. Acid sharpens. Heat transforms",
-            "Cooking is balance. Salt brightens. Fat enriches. Acid sharpens. Heat transforms",
-            "Cooking is balance. Salt brightens. Fat enriches. Acid sharpens. Heat transforms"
-        ]
+    const [scraps, setScraps] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedScrap, setSelectedScrap] = useState(null);
+
+    useEffect(() => {
+        async function fetchScraps() {
+            try {
+                setIsLoading(true);
+                setError(null);
+
+                const response = await fetch('/api/scraps');
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to fetch scraps');
+                }
+
+                const data = await response.json();
+                setScraps(data.results || []);
+            } catch (err) {
+                console.error('Error fetching scraps:', err);
+                setError(err.message || 'An error occurred while fetching scraps');
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        fetchScraps();
+    }, []);
+
+    const expandScrap = (scrap) => {
+        setSelectedScrap(scrap);
+        setIsModalOpen(true);
     }
 
-    // const filteredEntries = sampleEntries.texts.filter((text) =>
-    //     text.toLowerCase().includes(searchQuery.toLowerCase())
-    // );
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="flex flex-col items-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black mb-4"></div>
+                    <p className="text-lg">Loading scraps...</p>
+                </div>
+            </div>
+        );
+    }
 
-    const [isModalOpen, setIsModalOpen] = useState(false)
-    // const [selectedScrap, setSelectedScrap] = useState()
+    // Error state
+    if (error) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="bg-red-50 p-6 rounded-lg border border-red-200 max-w-md">
+                    <h2 className="text-xl font-bold text-red-600 mb-2">Error Loading Scraps</h2>
+                    <p className="text-gray-800">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
-    const expandScrap = () => {
-        setIsModalOpen(true)
+    // Empty state
+    if (scraps.length === 0) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 max-w-md">
+                    <h2 className="text-xl font-bold mb-2">No Scraps Found</h2>
+                    <p className="text-gray-600">There are no scraps in the database yet.</p>
+                </div>
+            </div>
+        );
     }
 
     return (
         <div className="min-h-screen">
-            {/* Grid container */}
-            {isModalOpen && <ScrapModal />}
+            {isModalOpen && selectedScrap && (
+                <ScrapModal
+                    scrap={selectedScrap}
+                    onClose={() => {
+                        setIsModalOpen(false);
+                        setSelectedScrap(null);
+                    }}
+                />
+            )}
             <main className="p-20">
                 <div className="grid grid-cols-5 gap-3">
-                    {sampleEntries.texts.map((text, index) => (
+                    {scraps.map((scrap, index) => (
                         <div
                             key={index}
                             className="aspect-square bg-white rounded-[16px] border-[1px] border-black p-5 overflow-scroll"
-                            onClick={expandScrap}
+                            onClick={() => expandScrap(scrap)}
                         >
-                            <p className="font-medium">{text}</p>
+                            <p className="font-medium">{scrap.content}</p>
+                            {scrap.tags && scrap.tags.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                    {scrap.tags.slice(0, 3).map((tag, idx) => (
+                                        <span key={idx} className="text-xs px-2 py-0.5 bg-gray-100 rounded-full">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                    {scrap.tags.length > 3 && (
+                                        <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full">
+                                            +{scrap.tags.length - 3}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
