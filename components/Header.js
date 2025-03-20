@@ -1,8 +1,10 @@
 'use client'
 import Image from "next/image";
 import { useState, useEffect } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, LogOut, User, LogIn } from 'lucide-react';
 import Link from "next/link";
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const ThemeToggle = () => {
     const [isDarkMode, setIsDarkMode] = useState(false);
@@ -56,6 +58,17 @@ const ThemeToggle = () => {
 
 const Header = () => {
     const [searchQuery, setSearchQuery] = useState("");
+    const { user, logout } = useAuth();
+    const router = useRouter();
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            router.push('/login');
+        } catch (error) {
+            console.error('Logout failed:', error);
+        }
+    };
 
     return (
         <header className="bg-[#D8D8D8] py-4 px-8" >
@@ -74,29 +87,42 @@ const Header = () => {
                 />
                 <div className="flex gap-8 items-center">
                     <ThemeToggle />
-                    <button className="h-8 aspect-square rounded-full bg-white flex items-center justify-center shadow-md">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-black"
-                        >
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                    </button>
-                    <Image
-                        src={'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Default_pfp.svg/2048px-Default_pfp.svg.png'}
-                        height={40}
-                        width={40}
-                        alt="Profile picture"
-                    />
+
+                    {user ? (
+                        <div className="flex items-center gap-4">
+                            <button
+                                className="h-8 aspect-square rounded-full bg-white flex items-center justify-center shadow-md"
+                                onClick={handleLogout}
+                                title="Log out"
+                            >
+                                <LogOut size={16} className="text-black" />
+                            </button>
+                            <div className="flex items-center">
+                                <span className="text-sm mr-2">{user.email}</span>
+                                <Image
+                                    src={'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Default_pfp.svg/2048px-Default_pfp.svg.png'}
+                                    height={40}
+                                    width={40}
+                                    alt="Profile picture"
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-4">
+                            <Link href="/login">
+                                <button className="px-4 py-1 rounded-full bg-white flex items-center gap-2 shadow-md">
+                                    <LogIn size={16} className="text-black" />
+                                    <span className="text-sm font-medium">Log In</span>
+                                </button>
+                            </Link>
+                            <Link href="/signup">
+                                <button className="px-4 py-1 rounded-full bg-black text-white flex items-center gap-2 shadow-md">
+                                    <User size={16} />
+                                    <span className="text-sm font-medium">Sign Up</span>
+                                </button>
+                            </Link>
+                        </div>
+                    )}
                 </div>
             </div>
         </header>
