@@ -1,4 +1,5 @@
 "use client"
+import ScrapModal from '@/components/ScrapModal';
 import { useState } from 'react';
 
 export default function Home() {
@@ -35,15 +36,24 @@ export default function Home() {
     //     text.toLowerCase().includes(searchQuery.toLowerCase())
     // );
 
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    // const [selectedScrap, setSelectedScrap] = useState()
+
+    const expandScrap = () => {
+        setIsModalOpen(true)
+    }
+
     return (
         <div className="min-h-screen">
             {/* Grid container */}
+            {isModalOpen && <ScrapModal />}
             <main className="p-20">
                 <div className="grid grid-cols-5 gap-3">
                     {sampleEntries.texts.map((text, index) => (
                         <div
                             key={index}
                             className="aspect-square bg-white rounded-[16px] border-[1px] border-black p-5 overflow-scroll"
+                            onClick={expandScrap}
                         >
                             <p className="font-medium">{text}</p>
                         </div>
