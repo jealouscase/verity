@@ -58,7 +58,7 @@ const ThemeToggle = () => {
 
 const Header = () => {
     const [searchQuery, setSearchQuery] = useState("");
-    const { user, logout } = useAuth();
+    const { user, profile, logout } = useAuth();
     const router = useRouter();
 
     const handleLogout = async () => {
@@ -74,7 +74,7 @@ const Header = () => {
         <header className="bg-[#D8D8D8] py-4 px-8" >
             <div className="flex justify-between items-center">
                 <div className="flex gap-8">
-                    <p className="text-xl">Verity</p>
+                    <Link className="text-xl" href={'/'}>Verity</Link>
                     <p className="text-xl font-semibold">Archive</p>
                     <Link className="text-xl" href={'/v1'}>v1</Link>
                 </div>
@@ -97,15 +97,45 @@ const Header = () => {
                             >
                                 <LogOut size={16} className="text-black" />
                             </button>
-                            <div className="flex items-center">
-                                <span className="text-sm mr-2">{user.email}</span>
-                                <Image
-                                    src={'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Default_pfp.svg/2048px-Default_pfp.svg.png'}
-                                    height={40}
-                                    width={40}
-                                    alt="Profile picture"
-                                />
-                            </div>
+
+                            <Link href="/profile">
+                                <div className="flex items-center cursor-pointer group">
+                                    <div className="mr-2">
+                                        <span className="text-sm group-hover:underline">
+                                            {profile?.firstName || user.email}
+                                        </span>
+                                        {profile?.username && (
+                                            <p className="text-xs text-gray-600">@{profile.username}</p>
+                                        )}
+                                    </div>
+                                    <div className="h-10 w-10 rounded-full overflow-hidden bg-[#A15555] flex items-center justify-center">
+                                        {profile?.profilePicture ? (
+                                            <Image
+                                                src={profile.profilePicture}
+                                                alt={`${profile.firstName} ${profile.lastName}`}
+                                                width={40}
+                                                height={40}
+                                                className="object-cover"
+                                                onError={(e) => {
+                                                    e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Default_pfp.svg/2048px-Default_pfp.svg.png';
+                                                }}
+                                            />
+                                        ) : profile ? (
+                                            <span className="text-white text-sm font-bold">
+                                                {profile.firstName.charAt(0)}
+                                                {profile.lastName.charAt(0)}
+                                            </span>
+                                        ) : (
+                                            <Image
+                                                src={'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Default_pfp.svg/2048px-Default_pfp.svg.png'}
+                                                height={40}
+                                                width={40}
+                                                alt="Profile picture"
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            </Link>
                         </div>
                     ) : (
                         <div className="flex items-center gap-4">

@@ -9,7 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "firebase": "^11.4.0",
+    "cookies-next": "^5.1.0",
+    "firebase": "^11.5.0",
     "lucide-react": "^0.475.0",
     "neo4j-driver": "^5.28.1",
     "next": "15.1.7",
