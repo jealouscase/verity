@@ -98,7 +98,7 @@ export default function Home() {
                     {scraps.map((scrap, index) => (
                         <div
                             key={index}
-                            className="aspect-square bg-white rounded-[16px] border-[1px] border-black p-5 overflow-scroll"
+                            className="aspect-square bg-white rounded-[16px] border-[1px] border-black p-5 overflow-scroll hover:cursor-pointer"
                             onClick={() => expandScrap(scrap)}
                         >
                             <p className="font-medium">{scrap.content}</p>
